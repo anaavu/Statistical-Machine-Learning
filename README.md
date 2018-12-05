@@ -1,5 +1,6 @@
 # Statistical-Machine-Learning
-## PSTAT 231
+
+This repository contains the work I have completed for the Statistical Machine Learning Course PSTAT 231 at UCSB.
 
 ### Assignment 1: 
 Linear Regression, Cross Validation, and Dealing with missing values
