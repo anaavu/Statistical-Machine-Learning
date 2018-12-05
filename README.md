@@ -1,6 +1,7 @@
 # Statistical-Machine-Learning
 
 This repository contains the work I have completed for the Statistical Machine Learning Course PSTAT 231 at UCSB.
+
 All code has been written in R.
 
 ### Assignment 1: 
