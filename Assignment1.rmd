@@ -1,0 +1,380 @@
+---
+title: "Homework 1"
+author: "Martina Rosen and Ashwini Patil"
+date: "10/3/2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+#Install and load tidyverse
+```{r}
+#install.packages("tidyverse")
+library("tidyverse")
+```
+
+```{r, echo =FALSE}
+algae <- read_table2("algaeBloom.txt", col_names= c('season','size','speed','mxPH','mnO2','Cl','NO3','NH4', 'oPO4','PO4','Chla','a1','a2','a3','a4','a5','a6','a7'), na="XXXXXXX")
+```
+
+#Problem 1
+</b>
+##1.a
+</b>
+```{r}
+algae%>%
+  group_by(season)%>%
+  summarise(n = n())
+```
+<b>
+
+##1.b
+</b>
+```{r}
+notNA <- algae %>%
+  summarise_at(.funs=funs(sum(!is.na(.))), .vars = vars(mxPH:Chla))
+#Compute mean of each chemical
+chemMean <- algae %>%
+  summarise_at(vars(mxPH:Chla), mean, na.rm=TRUE)
+#Computer var of each chemical
+chemVar <- algae %>%
+  summarise_at(vars(mxPH:Chla), var, na.rm=TRUE)
+Names <- c("Cout", "Mean", "StD")
+cbind(Names, rbind(notNA, chemMean, sqrt(chemVar)))
+#NH4, oPO4 and PO4 have very large standard deviations, which indicate the mean isn't very useful.
+```
+</b>
+
+##1.c 
+```{r}
+# Compute median of each chemical
+chemMed <- algae %>%
+  dplyr::select(mxPH:Chla) %>%
+  summarise_all(function(z) median(z, na.rm=TRUE))
+# Compute mad of each chemical
+chemMad <- algae %>%
+  summarise_at(vars(mxPH:Chla), funs(mad), na.rm = TRUE)
+rnames <- list("Med", "Mean", "Mad", "StD")
+rbind(chemMed, chemMad, chemMad, sqrt(chemVar))
+# The mean is generally higher than the median for each attribute. 
+# The standard deviation is larger than the mad. 
+#These differences imply that extreme high values skew the average 
+#and that the data is more broadly spread around the mean than it is around the median. 
+# The much smaller MAD vs. the StD indicates the presence of influential points, potentially outliers. 
+```
+</b>
+#2
+<b>
+##2.a
+```{r}
+mxphPlot <- algae%>%
+  drop_na(mxPH)%>%
+  ggplot(aes(mxPH,stat(density))) +
+  geom_histogram(bins = 100) + ggtitle("Histogram of mxPH")
+mxphPlot
+```
+</b>
+##2.b
+```{r}
+algae%>%
+  drop_na(mxPH)%>%
+  ggplot(aes(mxPH,stat(density))) +
+  geom_histogram(bins = 100) + ggtitle("Histogram of mxPH") + geom_density(inherit.aes = TRUE)
+```
+</b>
+##2.c
+```{r}
+a1Box <- ggplot() + geom_boxplot(data=algae, aes(y=a1, x=size)) + ggtitle('A conditioned Boxplot of Algal $a_1$')
+a1Box
+```
+</b>
+##2.d
+```{r}
+# Use ggplot function stat_qq() and stat_qq_line to find outliers in NO3
+outNO3 <- algae%>%
+  drop_na(NO3)%>%
+  ggplot(aes(sample = NO3)) + stat_qq()+stat_qq_line()+labs(title = "QQ Plot for NO3", subtitle = "Outlier listed at bottom", caption = max(algae$NO3, na.rm=TRUE))
+outNO3
+
+# Find outlier in NH4
+outNO4 <- algae%>%
+  drop_na(NH4)%>%
+  ggplot(aes(sample = NH4)) + stat_qq()+stat_qq_line()+ labs(title = "QQ Plot", subtitle = "Outlier value listed at bottom", caption = max(algae$NH4, na.rm=TRUE), " appears to be an outlier value in attribute NH4")
+outNO4
+
+
+```
+
+##2.e
+```{r}
+# Compute median of each chemical
+medNO3NH4 <- algae%>%
+  dplyr::select(NO3, NH4)%>%
+  summarise_all(function(z) median(z, na.rm=TRUE))
+# Compute mad of each chemical
+madNO3NH4 <- algae%>%
+  summarise_at(vars(NO3, NH4), funs(mad), na.rm = TRUE)
+#Compute mean of each chemical
+meanNO3NH4 <- algae%>%
+  summarise_at(vars(NO3, NH4), mean, na.rm=TRUE)
+#Computer var of each chemical
+varNO3NH4 <- algae%>%
+  summarise_at(vars(NO3, NH4), var, na.rm=TRUE)
+myTable <- rbind(medNO3NH4,meanNO3NH4, madNO3NH4,sqrt(varNO3NH4))
+Stat <- c("Med", "Mean", "Mad", "Std")
+nTable <- cbind(Stat, myTable)
+nTable
+
+# As expected, the mean is much higher than the median and the standard deviation is much higher than the MAD, which indicates that not only is the measure of central tendency more temperamental in the presence of outliers, but the spread appears much broader when the variance is used, than the MAD would indicate. Hence the median and MAD are again the more robust measures. 
+```
+
+
+#3
+##3.a
+```{r}
+fAlgae <- filter(algae, is.na(mxPH)|is.na(mnO2)|is.na(Cl)|is.na(NO3)|is.na(NH4)|is.na(oPO4)|is.na(PO4)|is.na(Chla))
+
+cat("The number of observations that contain one or more missing values is", nrow(fAlgae), "\n")
+isNA = notNA
+for(i in 1:length(notNA))
+  isNA[[i]] = 200 - notNA[[i]]
+print("The number of missing values in each column is listed in the table below:")
+isNA
+```
+
+
+##3.b
+```{r}
+algae.del <- filter(algae, !is.na(mxPH)&!is.na(mnO2)&!is.na(Cl)&!is.na(NO3)&!is.na(NH4)&!is.na(oPO4)&!is.na(PO4)&!is.na(Chla))
+cat("There are",nrow(algae.del),"observations without missing values in the dataset.")
+```
+
+ 
+
+##3.c
+```{r imputation}
+algae.med <- algae%>%
+  mutate_at(.vars = vars(4:11), .funs = funs(ifelse(is.na(.), median(., na.rm = TRUE), .)))
+print("The number of observations in algae.med is")
+nrow(algae.med)
+print("The chemicals for the 48th, 62nd, and 199th rows are displayed in the table below")
+Row <- c(48, 62, 199)
+cbind(Row, rbind(algae.med[48,4:11], algae.med[62,4:11], algae.med[199,4:11]))
+```
+
+
+##3.d
+```{r}
+require(utils)
+#pairs(algae[4:11])
+x <- algae.del[4:11]
+x.cor <- cor(x)
+x.cor
+reg <- lm(algae$PO4~algae$oPO4)
+algae$PO4[28] <- predict(reg)[28]
+```
+
+##3.e
+<b>
+*The case of the military plane example presented during lecture informs the need for human analysis to consider why missing values may be missing -- it could be the result of an extreme, or some other situation that needs human intelligence to probe. *
+
+#4
+</b>
+##4.a
+```{r}
+id <- rep(1:5, each = 40)
+id <- sample(id)
+almed1 <- cbind(id, algae.med)
+```
+
+
+*The recommended code didn't work for me and I couldn't get help on Piazza.*
+* ```{r chunkids}
+set.seed(500)
+almed = algae.med %>% select(-c(season, size, speed))
+cut(1:nrow(almed), 5, label=FALSE) %>%
+  sample
+```*</b>
+
+##4.b
+```{r 5FoldCV}
+
+#do.chunk2 <- function(chunkid, chunkdef, dat)
+ # Xtr = algae.med[almed1$id != 1, 1:11]
+errors <- data.frame("fold"=NULL, "train.error"=NULL, "val.error"=NULL)
+dat <- almed1
+for(i in 1:5){
+    Xtr = dat[dat$id != i,2:12]  # get training set
+    Ytr = dat[dat$id != i,13]  # get true response values in trainig set
+    Xvl = dat[!(dat$id != i),2:12]  # get validation set
+    Yvl = dat[!(dat$id != i),13]  # get true response values in validation set
+    lm.a1 <- lm(a1~., dat[dat$id!=i,2:13])
+    predYtr = predict(lm.a1)  # predict training values
+    predYtr
+    predYvl = predict(lm.a1,Xvl)  # predict validation values
+    output <- list(i, mean((predYtr - Ytr)^2), # compute and store training error
+               mean((predYvl - Yvl)^2))   # compute and store test error
+    errors <- rbind(errors, output)
+}
+colnames(errors) <- c("Fold", "Training Error", "Test Error")
+errors
+```
+
+#5
+
+```{r real}
+alTest <- read_table2('algaeTest.txt',
+                    col_names=c('season','size','speed','mxPH','mnO2','Cl','NO3',
+                                'NH4','oPO4','PO4','Chla','a1'),
+                    na=c('XXXXXXX'))
+```
+</b>
+##5.a
+```{r}
+tSet = algae.med[,1:11] 
+vSet = alTest[,1:11]  
+vSet2 = alTest[,12]
+
+lmAll <- lm(a1~., data = algae.med[,1:12])
+predvSet = predict(lmAll, vSet) 
+sum((predvSet-vSet2)^2)/length(predvSet)
+#MSE
+
+#It definitely fits in with the values in part 4, however, I'm skeptical about my code because it didn't work very well in problem 6. 
+```
+
+
+#6
+```{r islr_install}
+library(ISLR)
+head(Wage)
+```
+
+##6.a
+```{r}
+ ExpSalary = ggplot(Wage, aes(x=age, y=wage)) 
+    ExpSalary + geom_point() + geom_smooth()+ggtitle("Wage vs Age")
+    print("Apart from a few outliers, it seems that wages rise with age up till a peak point around 40-50 years of age and then slowly decrease again with increase in age.")
+```
+
+
+
+##6.b
+```{r}
+modelErrors <- data.frame("Model"=NULL, "Train Error"=NULL, "Test Error"=NULL)
+nums <- rep(1:5, each = length(Wage)/5)
+id <- sample(nums)
+age <- Wage$age
+wage <- Wage$wage
+data <- data.frame("ID" = id, "AGE" = age, "WAGE" = wage)
+for (i in 1:5){
+  sumtrain = 0
+  sumtest = 0
+    inTrain = data[data[,1]!=i,2]
+    outTrain = data[data[,1]!=i,3]
+    inTest = data[!(data[,1]!=i),2:3]
+    outTest = data[!(data[1]!=i),3]
+    fit <- lm(WAGE~1, data[data[,1]!=i,2:3])
+    length(data)
+    pTrain = predict(fit)
+    pTest = predict(fit, inTest)
+    sumtrain <- sumtrain + mean((pTrain - outTrain)^2)
+    sumtest <- sumtest + mean((pTest - outTest)^2)
+}
+modelErrors <- rbind(modelErrors, list(0, sumtrain/5, sumtest/5))
+for(j in 1:10){
+  sumtrain = 0
+  sumtest = 0
+  for (i in 1:5){
+    inTrain = data[data[,1]!=i,2]
+    outTrain = data[data[,1]!=i,3]
+    inTest = data.frame(data[data[,1]!=i, 2])
+    outTest = data[!(data[1]!=i),3]
+    fit <- lm(data[data[,1]!=i, 3]~poly(data[data[,1]!=i, 2], j, raw = FALSE), data = data)
+    pTrain = predict(fit)
+    pTest = predict(fit, inTest)
+    sumtrain <- sumtrain + mean((pTrain - outTrain)^2)
+    sumtest <- sumtest + mean((pTest - outTest)^2)
+  }
+  modelErrors <- rbind(modelErrors, list(j, sumtrain/5, sumtest/5))
+}
+colnames(modelErrors) <- list("Degree", "Train Error", "Test Error")
+modelErrors
+```
+
+</b>
+##6.c
+```{r}
+plot(modelErrors$Degree, modelErrors$`Train Error`, col = 'skyblue', ylab = "Error", xlab = "Degree", ylim = c(300, 2000), main = "Plotted Errors")
+points(modelErrors$Degree, modelErrors$`Test Error`, col = 'hotpink')
+```
+*It looks like they are all equally bad except for the intercept-only mode. But I think that's because my code is bad.*
+
+#Question 7
+
+
+$MSE = E[(\hat \theta - E[\hat \theta] + E[\hat \theta] - \theta)^{2}]$ \newline
+\quad    = $E[(\theta - E[\hat \theta])^{2} + (E[\hat \theta] - \theta)^{2} + 2(\hat \theta - E[\hat \theta])(E[\hat \theta] - \theta)]$ \newline
+\quad    = $E[(\theta - E[\hat \theta])^{2}] + E[(E[\hat \theta] - \theta)^{2}] + E[2(\hat \theta - E[\hat \theta])(E[\hat \theta] - \theta)]$ \newline
+\quad    = $E[(\theta - E[\hat \theta])^{2}] + (E[\hat \theta] - \theta)^{2} + 2(E[\hat \theta] - \theta)E[(\hat \theta - E[\hat \theta])]$ because $E[\hat \theta] - \theta]$ is constant. \newline
+\quad    = $E[(\theta - E[\hat \theta])^{2}] + (E[\hat \theta] - \theta)^{2} + 2(E[\hat \theta] - \theta)(E[\hat \theta] - E[\hat \theta])]$ because $E[\hat \theta]$ is constant. \newline
+\quad    = $E[(\theta - E[\hat \theta])^{2}] + (E[\hat \theta] - \theta)^{2}$ \newline
+    
+    Here the first term is the Variance and the second is the square of the bias.
+    Hence proved.
+
+#Question 8
+##a
+
+Let $x = \begin{bmatrix} x_1\\ x_2\\ .. \\ x_n\\ \end{bmatrix}$ and $y = \begin{bmatrix} y_1\\ y_2\\ .. \\ y_n\\ \end{bmatrix}$. Therefore, $x-y = \begin{bmatrix} x_1 - y_1\\ x_2 - y_2\\ .. \\ x_n - y_n\\ \end{bmatrix}$.
+    
+  $\|x-y\|_2$ = $\sqrt{\sum_{i=1}^{n} \left | x_i -y_i\right |^2}$
+    
+  Because it is the square root of a sum of positive numbers, $\|x-y\|_2 \geq 0$ holds.
+    
+  $\|x-y\|_2$ = 0 when all x_i = y_i is true, which is the case only when x=y.
+    
+  Hence the Euclidean norm satisfies the property of Positivity.
+    
+  $d(x,y) = \|x-y\|_2$ = $\sqrt{\sum_{i=1}^{n} \left | x_i -y_i\right |^2}$
+    
+  $d(y,x) = \|y-x\|_2$ = $\sqrt{\sum_{i=1}^{n} \left | y_i -x_i\right |^2}$
+    
+  For every x_i, y_i pair, $\left | x_i - y_i \right | = \left | y_i - x_i \right |$.
+  Hence, $\sqrt{\sum_{i=1}^{n} \left | x_i -y_i\right |^2} = \sqrt{\sum_{i=1}^{n} \left | y_i -x_i\right |^2}$.
+    
+  Therefore, $d(x,y) = d(y,x)$ and the property of symmetry holds.
+    
+
+#Question 8
+##b
+
+ Let $x = \begin{bmatrix} x_1\\ x_2\\ .. \\ x_n\\ \end{bmatrix}$ and $y = \begin{bmatrix} y_1\\ y_2\\ .. \\ y_n\\ \end{bmatrix}$. Therefore, $x-y = \begin{bmatrix} x_1 - y_1\\ x_2 - y_2\\ .. \\ x_n - y_n\\ \end{bmatrix}$.
+  
+  $\|x-y\|_\infty = max_{i}\{\left | x_1 - y_1 \right |, \left | x_2 - y_2 \right | ... \left | x_n - y_n \right |\}$
+  
+  Therefore, $d(x,y) = \|x-y\|_\infty$ is the maximum value of a set of positive numbers, and is hence a positive number.
+  
+  $d(x,y) = 0$ if $x_1=y_1, x_2=y_2, ... x_n=y_n$ for all i from 1 to n. \newline
+  This is only the case when x=y, and hence $d(x,y) = 0$ only if x=y. \newline
+  Therefore the property of positvity holds.
+  
+  $d(x,y) = max_{i}\{\left | x_1 - y_1 \right |, \left | x_2 - y_2 \right | ... \left | x_n - y_n \right |\}$
+  
+  $d(y,x) = max_{i}\{\left | y_1 - x_1 \right |, \left | y_2 - x_2 \right | ... \left | y_n - x_n \right |\}$
+  
+  However, since for any i, $\left | x_i - y_i \right | = \left | y_i - x_i \right |$ \newline
+  $max_{i}\{\left | x_1 - y_1 \right |, \left | x_2 - y_2 \right | ... \left | x_n - y_n \right |\} = max_{i}\{\left | y_1 - x_1 \right |, \left | y_2 - x_2 \right | ... \left | y_n - x_n \right |\}$
+  
+  And therefore, $d(x,y) = d(y,x)$ and the property of symmetry holds.
+
+
+
+
+
+
+
+
+
+
